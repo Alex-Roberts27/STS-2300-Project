@@ -1,0 +1,262 @@
+---
+title: "Stats Project - Analyzing World Fairs"
+author: "Alexander Roberts"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+<br>
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+<br> 
+
+# Project Overview
+This project was focused on taking data from Wikipedia about Worlds Fairs, including World Expos, Specialized Expos, and Horticultural Expos. This data includes information about expo years, locations, dates, area, visitors, participating countries, and the theme. The code below is for analyzing the start month of the expos, the end month of the expos and the duration in months of the expos. This code utilizes dplyr for data cleaning and wrangling, while ggplot is used for the graphs. Starter code and graphing code is hidden for clarity.
+
+ <br>
+ 
+# **Starter Code and Starter Data Frame**
+#### Starter Code -- Code Hidden
+```{r, message = FALSE}
+library(rvest)
+library(purrr)
+library(dplyr)
+```
+
+```{r, echo = FALSE, message = FALSE}
+wc_wiki <- "https://en.wikipedia.org/wiki/World%27s_fair#List_of_expositions" |>
+  read_html() |>
+  html_nodes("table")
+
+wf_data_expos <- wc_wiki |>
+  purrr::pluck(1) |>
+  html_table()
+wf_data_expos <- wf_data_expos |>
+  mutate(ExpoType = "WorldExpo")
+
+wf_data_exposspecial <- wc_wiki |>
+  purrr::pluck(2) |>
+  html_table()
+wf_data_exposspecial <- wf_data_exposspecial |>
+  mutate(ExpoType = "SpecializedExpo")
+
+wf_data_exposhorticulture <- wc_wiki |>
+  purrr::pluck(3) |>
+  html_table()
+wf_data_exposhorticulture <- wf_data_exposhorticulture |>
+  mutate(ExpoType = "HorticulturalExpo")
+
+expos <- rbind(wf_data_expos, wf_data_exposspecial, wf_data_exposhorticulture)
+```
+
+## Data Frame:
+This shows how the data frame looks when it is first created. The top three rows are shown by choice.
+```{r, message = FALSE}
+library(kableExtra)
+```
+
+```{r, echo = FALSE, message = FALSE}
+expohead <- head(expos, n = 3)
+
+kable(expohead) |>
+  kable_classic(
+    bootstrap_options = "striped",
+    full_width = FALSE
+  )
+
+#str(expos)
+```
+
+***
+
+# **Data Cleaning**
+Code is hidden, but resulting data frame after using select to select for necessary columns is shown.
+
+```{r, echo = FALSE}
+exposclean <- expos |>
+  select(Year, Dates, ExpoType)
+```
+
+```{r, echo = FALSE, message = FALSE}
+expohead2 <- head(exposclean, n = 3)
+
+kable(expohead2) |>
+  kable_classic(
+    bootstrap_options = "striped",
+    full_width = FALSE
+  )
+```
+
+***
+
+# **Analysis Code**
+This code is used for taking the expos data frame and converting it into a usable format for analysis. The resulting data frame is displayed below.
+
+```{r, message = FALSE}
+library(stringr)
+library(tidyr)
+```
+
+```{r, echo = FALSE, message = FALSE}
+expos_months <- exposclean |>
+  mutate(Months = str_remove_all(Dates, "\\d")) |>
+  mutate(MonthsClean = str_replace_all(Months, " ", "")) |>
+  separate_wider_delim(cols = MonthsClean,
+                       delim = "–",
+                       names = c("StartMonth", "EndMonth"),
+                       too_few ="align_start") |>
+  mutate(StartMonth = if_else((StartMonth ==""), EndMonth, StartMonth))
+```
+
+```{r, echo = FALSE, message = FALSE}
+expohead3 <- head(expos_months, n = 3)
+
+kable(expohead3) |>
+  kable_classic(
+    bootstrap_options = "striped",
+    full_width = FALSE
+  )
+```
+
+***
+
+# **Graphing**
+
+#### Making Data Frame for Graphing -- Code Hidden
+``` {r, echo = FALSE}
+expos_months$StartMonth <- factor(expos_months$StartMonth, 
+                                     levels = c("January",
+                                                "February",
+                                                "March",
+                                                "April",
+                                                "May",
+                                                "June",
+                                                "July",
+                                                "August",
+                                                "September",
+                                                "October",
+                                                "November",
+                                                "December"))
+
+expos_months$EndMonth <- factor(expos_months$EndMonth, 
+                                  levels = c("January",
+                                             "February",
+                                             "March",
+                                             "April",
+                                             "May",
+                                             "June",
+                                             "July",
+                                             "August",
+                                             "September",
+                                             "October",
+                                             "November",
+                                             "December"))
+```
+## First Graph -- Start Month of the Expos
+```{r, message = FALSE}
+library(ggplot2)
+```
+
+```{r, echo = FALSE}
+ggplot(expos_months, aes(x = StartMonth, fill = ExpoType)) +
+  geom_bar(show.legend = FALSE) +
+  facet_wrap(~ ExpoType, ncol = 1) +
+  labs(title = "A - Start Month By Expo Type",
+       x = "Month",
+       y= "Count") +
+  scale_fill_manual(values=
+                      c("WorldExpo" = "black",
+                        "SpecializedExpo" = "orange",
+                        "HorticulturalExpo" = "darkgreen")) +
+#Scale_fill sets specific variables to specific colors. From the ggplot cheat-sheet. 
+  theme_classic()
+```
+<br>
+
+## Second Graph -- End Month of the Expos
+```{r, echo = FALSE}
+ggplot(expos_months, aes(x = EndMonth, fill = ExpoType)) +
+  geom_bar(show.legend = FALSE) +
+  facet_wrap(~ ExpoType, ncol = 1) +
+  labs(title = "A - End Month By Expo Type",
+       x = "Month",
+       y= "Count") +
+  scale_fill_manual(values=
+                      c("WorldExpo" = "black",
+                        "SpecializedExpo" = "orange",
+                        "HorticulturalExpo" = "darkgreen")) +
+  theme_classic()
+```
+
+<br>
+
+#### Making Data Frame for Duration Graphing -- Code Hidden
+```{r, echo = FALSE}
+expos_numMonths <- expos_months |>
+  mutate(NumStartMonth = case_when(
+    StartMonth == "January" ~ 1,
+    StartMonth == "February" ~ 2,
+    StartMonth == "March" ~ 3,
+    StartMonth == "April" ~ 4,
+    StartMonth == "May" ~ 5,
+    StartMonth == "June" ~ 6,
+    StartMonth == "July" ~ 7,
+    StartMonth == "August" ~ 8,
+    StartMonth == "September" ~ 9,
+    StartMonth == "October" ~ 10,
+    StartMonth == "November" ~ 11,
+    StartMonth == "December" ~ 12))
+
+expos_full_numMonths <- expos_numMonths |>
+  mutate(NumEndMonth = case_when(
+    EndMonth == "January" ~ 1,
+    EndMonth == "February" ~ 2,
+    EndMonth == "March" ~ 3,
+    EndMonth == "April" ~ 4,
+    EndMonth == "May" ~ 5,
+    EndMonth == "June" ~ 6,
+    EndMonth == "July" ~ 7,
+    EndMonth == "August" ~ 8,
+    EndMonth == "September" ~ 9,
+    EndMonth == "October" ~ 10,
+    EndMonth == "November" ~ 11,
+    EndMonth == "December" ~ 12))
+
+expoduration <- expos_full_numMonths |>
+  mutate(Duration = NumEndMonth - NumStartMonth)
+
+expodurationclean <- expoduration |>
+  filter_out(Duration < 0)
+#Due to how duration variable was made, there are some negative durations since some expos end in February and start in December. This is an issue due to how I coded these values, I don't know how to work around this issue. Lubridate might solve this issue.
+```
+
+```{r, echo = FALSE, message = FALSE}
+expohead4 <- head(expodurationclean, n = 3)
+
+kable(expohead4) |>
+  kable_classic(
+    bootstrap_options = "striped",
+    full_width = FALSE
+  )
+```
+
+## Third Graph -- Duration in Months of Expos
+```{r, echo = FALSE}
+ggplot(expodurationclean, aes(x = Duration, fill = ExpoType)) +
+  geom_bar(show.legend = FALSE) +
+  facet_wrap(~ ExpoType, ncol = 1) +
+  labs(title = "A - Duration of Months by Expo Type",
+       x = "Duration in Months",
+       y= "Number of Expos") +
+  scale_fill_manual(values=
+                      c("WorldExpo" = "black",
+                        "SpecializedExpo" = "orange",
+                        "HorticulturalExpo" = "darkgreen")) +
+  scale_x_continuous(breaks = seq(0, 12, 1)) +
+  theme_classic()
+```
