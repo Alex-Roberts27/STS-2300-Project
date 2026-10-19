@@ -8,21 +8,18 @@ library(dplyr)
 
 wf_data_expos <- wc_wiki |>
   purrr::pluck(1) |>
-  html_table()
-wf_data_expos <- wf_data_expos |>
-  mutate(ExpoType = "WorldExpo")
+  html_table() |>
+  mutate(ExpoType = "World Expo")
 
 wf_data_exposspecial <- wc_wiki |>
   purrr::pluck(2) |>
-  html_table()
-wf_data_exposspecial <- wf_data_exposspecial |>
-  mutate(ExpoType = "SpecialisedExpo")
+  html_table() |>
+  mutate(ExpoType = "Specialized Expo")
 
 wf_data_exposhorticulture <- wc_wiki |>
   purrr::pluck(3) |>
-  html_table()
-wf_data_exposhorticulture <- wf_data_exposhorticulture |>
-  mutate(ExpoType = "HorticulturalExpo")
+  html_table() |>
+  mutate(ExpoType = "Horticultural Expo")
 
 expos <- rbind(wf_data_expos, wf_data_exposspecial, wf_data_exposhorticulture)
 str(expos)
