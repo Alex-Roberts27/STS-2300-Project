@@ -16,7 +16,7 @@ This is an R Markdown document. Markdown is a simple formatting syntax for autho
 <br> 
 
 # Project Overview
-This project was focused on taking data from Wikipedia about Worlds Fairs, including World Expos, Specialized Expos, and Horticultural Expos. This data includes information about expo years, locations, dates, area, visitors, participating countries, and the theme. The code below is for analyzing the start month of the expos, the end month of the expos and the duration in months of the expos. This code utilizes dplyr for data cleaning and wrangling, while ggplot is used for the graphs. Starter code and graphing code is hidden for clarity.
+This project was focused on taking data from Wikipedia about World Fairs, including World Expos, Specialized Expos, and Horticultural Expos. This data includes information about expo years, locations, dates, area, visitors, participating countries, and the theme. The code below is for analyzing the start month of the expos, the end month of the expos and the duration in months of the expos. This code utilizes dplyr for data cleaning and wrangling, while ggplot is used for the graphs. Starter code and graphing code is hidden for clarity.
 
  <br>
  
