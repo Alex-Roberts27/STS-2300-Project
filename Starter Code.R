@@ -1,4 +1,5 @@
 library(rvest)
+
 wc_wiki <- "https://en.wikipedia.org/wiki/World%27s_fair#List_of_expositions" |>
   read_html() |>
   html_nodes("table")
