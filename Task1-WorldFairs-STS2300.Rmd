@@ -1,0 +1,503 @@
+---
+title: "Exploring World Fairs Attendance, Start Times, and Months"
+output: html_document
+date: "2026-10-27"
+author: "Austin Barnet, Alex Roberts"
+---
+
+## **Introduction**
+
+Our data examines the World Fair data found on [**this**](https://en.wikipedia.org/wiki/World%27s_fair#List_of_expositions) Wikipedia page. Data was taken from the Wikipedia page and compiled into a list of 98 different expositions including year, location, dates, area, the number of visitors, number of participants, the theme and the expo type, which was divided into three types: World, Specialized and Horticultural.
+
+World Fairs are events held every few years in various forms since the 1850's. The purpose of World Fairs is to create a unique, engaging, collaborative experience for people around the world to learn about other cultures, customs, traditions, history, art and advancements in technology. With World Fairs, there are three types, World Expo, Specialized Expo and Horticultural Expos. World Expos are the oldest, London held the first world exposition in 1851. World Expos are also the largest and most diverse, specialized expos focus on a specific theme, while horticultural expos are agriculturally focused. 
+
+Our purpose is to use this data to identify trends and patterns in World Fairs and examine how their characteristics have changed over time, including attendance, size, participation, location, and type of exposition. For this task, we examined scheduling, duration, and visitor attendance. 
+
+------------------------------------------------------------------------
+
+## **Data Preparation**
+
+Our data for world fairs was originally separated into World, Specialized and Horticultural Expos. We decided that this would be a good analysis starting point due to that having data separated into a reasonable 3 levels makes comparing data and making graphs easier. Some of our data had to be cleaned though as visitor totals had commas that we had to remove and had to be turned into a numeric variables, as well as removing the NAs. We then were able to combine all 3 types of Expo into one organized subset that made further analysis much easier.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, echo=FALSE, message = FALSE, error = FALSE}
+library(rvest)
+library(purrr)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(tidyverse)
+library(patchwork)
+library(kableExtra)
+```
+
+```{r, echo = FALSE, message= FALSE, warning = FALSE}
+wc_wiki <- "https://en.wikipedia.org/wiki/World%27s_fair#List_of_expositions" |>
+  read_html() |>
+  html_nodes("table")
+
+wf_data_expos <- wc_wiki |>
+  purrr::pluck(1) |>
+  html_table() |>
+  mutate(ExpoType = "World Expo")
+
+wf_data_exposspecial <- wc_wiki |>
+  purrr::pluck(2) |>
+  html_table() |>
+  mutate(ExpoType = "Specialized Expo")
+
+wf_data_exposhorticulture <- wc_wiki |>
+  purrr::pluck(3) |>
+  html_table() |>
+  mutate(ExpoType = "Horticultural Expo")
+
+expos <- rbind(wf_data_expos, wf_data_exposspecial, wf_data_exposhorticulture)
+```
+
+```{r,echo = FALSE, message= FALSE, warning = FALSE}
+expos <- expos |>
+  mutate(
+    `Area (ha)` = str_remove_all(`Area (ha)`, ","),
+    `Area (ha)` = as.numeric(`Area (ha)`),
+    
+    Participants = str_remove_all(Participants, ","),
+    Participants = as.numeric(Participants),
+    
+    Visitors = str_remove_all(Visitors, ","),
+    Visitors = na_if(Visitors, "N/A"),
+    Visitors = na_if(Visitors, ""),
+    Visitors = as.numeric(Visitors)
+  )
+```
+
+### Data Frame:
+
+This shows how the data frame looks when it is first created. The top three rows are shown by choice.
+
+```{r, echo = FALSE, message = FALSE}
+#expohead <- head(expos, n = 3)
+
+kable(head(expos, n = 3)) |>
+  kable_styling(
+    bootstrap_options = "striped",
+    full_width = FALSE
+  )
+#str(expos)
+```
+
+------------------------------------------------------------------------
+
+### Data Cleaning
+
+The resulting `expos` data frame after selecting for necessary columns is shown.
+
+```{r, echo = FALSE}
+exposclean <- expos |>
+  dplyr::select(Year, Dates, ExpoType)
+```
+
+```{r, echo = FALSE, message = FALSE}
+#expohead2 <- head(exposclean, n = 3)
+
+kable(head(exposclean, n = 3)) |>
+  kable_styling(
+    bootstrap_options = "striped",
+    full_width = FALSE
+  )
+```
+
+Code was then used for taking the `expos` data frame and converting it into a usable format for the start and end months analysis. The resulting `expos_months` data frame is displayed below.
+
+```{r, echo = FALSE, message = FALSE}
+expos_months <- exposclean |>
+  mutate(Months = str_remove_all(Dates, "\\d")) |>
+  mutate(MonthsClean = str_replace_all(Months, " ", "")) |>
+  separate_wider_delim(cols = MonthsClean,
+                       delim = "–",
+                       names = c("StartMonth", "EndMonth"),
+                       too_few ="align_start") |>
+  mutate(StartMonth = if_else((StartMonth ==""), EndMonth, StartMonth))
+```
+
+```{r, echo = FALSE, message = FALSE}
+#expohead3 <- head(expos_months, n = 3)
+
+kable(head(expos_months, n = 3)) |>
+  kable_styling(
+    bootstrap_options = "striped",
+    full_width = FALSE
+  )
+```
+
+Lastly, code was used to convert the months from the `expos_months` data frame into numeric values, which could then be used to calculate duration of the expos. The `expoduration` data frame is shown below.
+
+```{r, echo = FALSE}
+expos_numMonths <- expos_months |>
+  mutate(NumStartMonth = case_when(
+    StartMonth == "January" ~ 1,
+    StartMonth == "February" ~ 2,
+    StartMonth == "March" ~ 3,
+    StartMonth == "April" ~ 4,
+    StartMonth == "May" ~ 5,
+    StartMonth == "June" ~ 6,
+    StartMonth == "July" ~ 7,
+    StartMonth == "August" ~ 8,
+    StartMonth == "September" ~ 9,
+    StartMonth == "October" ~ 10,
+    StartMonth == "November" ~ 11,
+    StartMonth == "December" ~ 12))
+
+expos_full_numMonths <- expos_numMonths |>
+  mutate(NumEndMonth = case_when(
+    EndMonth == "January" ~ 1,
+    EndMonth == "February" ~ 2,
+    EndMonth == "March" ~ 3,
+    EndMonth == "April" ~ 4,
+    EndMonth == "May" ~ 5,
+    EndMonth == "June" ~ 6,
+    EndMonth == "July" ~ 7,
+    EndMonth == "August" ~ 8,
+    EndMonth == "September" ~ 9,
+    EndMonth == "October" ~ 10,
+    EndMonth == "November" ~ 11,
+    EndMonth == "December" ~ 12))
+
+expoduration <- expos_full_numMonths |>
+  mutate(Duration = if_else(
+    NumEndMonth < NumStartMonth,
+    NumEndMonth + 12 - NumStartMonth,
+    NumEndMonth - NumStartMonth
+  ))
+```
+
+```{r, echo = FALSE, message = FALSE}
+#expohead4 <- head(expodurationclean, n = 3)
+
+kable(head(expoduration, n = 3)) |>
+  kable_styling(
+    bootstrap_options = "striped",
+    full_width = FALSE
+  )
+```
+
+------------------------------------------------------------------------
+
+## **Descriptive Statistics**
+
+```{r, echo = FALSE, message= FALSE, warning = FALSE}
+options(scipen = 999)
+
+graph_num <- data.frame(
+  Variable = c("Area (ha)", "Visitors", "Participants"),
+  
+  Mean = c(
+    #mean(expos$Year, na.rm = TRUE),
+    mean(expos[["Area (ha)"]], na.rm = TRUE),
+    mean(expos$Visitors, na.rm = TRUE),
+    mean(expos$Participants, na.rm = TRUE)
+    ),
+  
+  Median = c(
+    #median(expos$Year, na.rm = TRUE),
+    median(expos[["Area (ha)"]], na.rm = TRUE),
+    median(expos$Visitors, na.rm = TRUE),
+    median(expos$Participants, na.rm = TRUE)
+    ),
+  
+  Min = c(
+    #min(expos$Year, na.rm = TRUE),
+    min(expos[["Area (ha)"]], na.rm = TRUE),
+    min(expos$Visitors, na.rm = TRUE),
+    min(expos$Participants, na.rm = TRUE)
+    ),
+  
+  Max = c(
+    #max(expos$Year, na.rm = TRUE),
+    max(expos[["Area (ha)"]], na.rm = TRUE),
+    max(expos$Visitors, na.rm = TRUE),
+    max(expos$Participants, na.rm = TRUE)
+    )
+  )
+
+graph_num <- graph_num |>
+  mutate(
+    Mean = format(round(Mean, 1), big.mark = ","),
+    Median = format(Median, big.mark = ","),
+    Min = format(Min, big.mark = ","),
+    Max = format(Max, big.mark = ",")
+    )
+
+graph_num |>
+  kbl(caption = "Descriptive Statistics for World's Fair Data", digits = 1) |>
+  kable_classic(
+    full_width = FALSE,
+    lightable_options = "striped"
+    )
+```
+
+Our data contains 98 World Fairs ranging from `r min(expos$Year)` to `r max(expos$Year)`. On average the typical size of an exposition was `r round(mean(expos[["Area (ha)"]], na.rm = TRUE),1)` hectares.
+
+The median size was `r median(expos[["Area (ha)"]], na.rm = TRUE)` hectares, compared with an average of `r round(mean(expos[["Area (ha)"]], na.rm = TRUE), 1)` hectares.
+
+Expositions had a median attendance of `r scales::comma(median(expos$Visitors, na.rm = TRUE))` visitors and an average attendance of `r scales::comma(round(mean(expos$Visitors, na.rm = TRUE)))` visitors.
+
+The median number of participating countries was `r median(expos$Participants, na.rm = TRUE)`, while the average was `r round(mean(expos$Participants, na.rm = TRUE), 1)`.
+
+When comparing the three exposition types, we found that World Expos had a much higher mean and median visitor attendance than Specialized and Horticultural Expos. Additionally, the mean attendance was higher than the median for all three types, suggesting that some expositions with particularly large attendance figures may be influencing the averages.
+
+```{r,echo = FALSE, message= FALSE, warning = FALSE}
+expos |>
+  group_by(ExpoType) |>
+  summarise(
+    Count = n(),
+    MeanVisitors = mean(Visitors, na.rm = TRUE),
+    MedianVisitors = median(Visitors, na.rm = TRUE),
+    MeanArea = mean(`Area (ha)`, na.rm = TRUE),
+    MeanParticipants = mean(Participants, na.rm = TRUE)
+    ) |>
+  kbl(digits = 1, format.args = list(big.mark = ",")) |>
+  kable_classic(full_width = FALSE)
+```
+
+```{r,echo = FALSE, message= FALSE, warning = FALSE}
+expos |>
+  group_by(ExpoType) |>
+  summarise(Count = n()) |>
+  mutate(Percent = round(Count / sum(Count) * 100, 1)) |>
+  kbl(caption = "Distribution of Expo Types") |>
+  kable_classic(full_width = FALSE)
+```
+
+------------------------------------------------------------------------
+
+## **Graphing**
+
+```{r, echo = FALSE}
+expos_months$StartMonth <- factor(expos_months$StartMonth, 
+                                     levels = c("January",
+                                                "February",
+                                                "March",
+                                                "April",
+                                                "May",
+                                                "June",
+                                                "July",
+                                                "August",
+                                                "September",
+                                                "October",
+                                                "November",
+                                                "December"))
+
+expos_months$EndMonth <- factor(expos_months$EndMonth, 
+                                  levels = c("January",
+                                             "February",
+                                             "March",
+                                             "April",
+                                             "May",
+                                             "June",
+                                             "July",
+                                             "August",
+                                             "September",
+                                             "October",
+                                             "November",
+                                             "December"))
+```
+
+### First Graph -- Start Month of the Expos
+
+```{r, echo = FALSE}
+ggplot(expos_months, aes(x = StartMonth, fill = ExpoType)) +
+  geom_bar(show.legend = FALSE) +
+  facet_wrap(~ ExpoType, ncol = 1) +
+  labs(title = "Start Month By Expo Type",
+       x = "Month",
+       y= "Count") +
+  scale_fill_manual(values=
+                       c("World Expo" = "steelblue",
+                        "Specialized Expo" = "orange3",
+                        "Horticultural Expo" = "forestgreen")) +
+#Scale_fill sets specific variables to specific colors. From the ggplot cheat-sheet. 
+  theme_classic()
+```
+
+#### Interpretation:
+
+This bar graph shows the starting month of each Expo type as a frequency. There seems to be a fair amount of variation in the start month depending on the exposition. It seems like World Expos tend to begin in April and May, while Horticultural Expos are most concentrated in April, while Specialized Expos seem to be heavily concentrated in May and June. One possible explanation is that warmer weather in the Northern Hemisphere makes these months more favorable for hosting large outdoor events, although additional data would be needed to confirm this relationship.
+
+<br>
+
+### Second Graph -- End Month of the Expos
+
+```{r, echo = FALSE}
+ggplot(expos_months, aes(x = EndMonth, fill = ExpoType)) +
+  geom_bar(show.legend = FALSE) +
+  facet_wrap(~ ExpoType, ncol = 1) +
+  labs(title = "End Month By Expo Type",
+       x = "Month",
+       y= "Count") +
+  scale_fill_manual(values=
+                      c("World Expo" = "steelblue",
+                        "Specialized Expo" = "orange3",
+                        "Horticultural Expo" = "forestgreen")) +
+  theme_classic()
+```
+
+#### Interpretation:
+
+This bar graph shows the ending month of each Expo type as a frequency. Again, there seems to be a fair amount of variation in the ending month depending on the exposition. World Expos tend to end in October and November, while Horticultural Expos are most concentrated in October. Specialized Expos seem to be more spread out throughout the summer and fall, with October being the most common ending month. Overall, these patterns suggest that most expos tend to conclude during the fall. One possible explanation is that colder weather in the Northern Hemisphere makes the following winter months less favorable for hosting large outdoor events, although additional data would be needed to confirm this relationship.
+
+<br>
+
+### Third Graph -- Duration in Months of Expos
+
+```{r, echo = FALSE}
+ggplot(expoduration, aes(x = Duration, fill = ExpoType)) +
+  geom_bar(show.legend = FALSE) +
+  facet_wrap(~ ExpoType, ncol = 1) +
+  labs(title = "Approximate Expo Duration by Type",
+       x = "Approximate Duration (Months)",
+       y= "Number of Expos") +
+  scale_fill_manual(values=
+                      c("World Expo" = "steelblue",
+                        "Specialized Expo" = "orange3",
+                        "Horticultural Expo" = "forestgreen")) +
+  scale_x_continuous(breaks = seq(0, 12, 1)) +
+  theme_classic()
+```
+
+#### Interpretation:
+
+For this bar graph we looked at how long each expo lasted for, for each expo type. There appears to be a noticeable difference in expo duration depending on each type of exposition. World Expos seem to last between 5-7 months, while Horticultural Expos seem to be heavily concentrated around 6 months. Interestingly though, Specialized Expos tend to have a larger variation in their durations.
+
+<br>
+
+### Fourth Graph -- Number of Visitors by All Expo Types
+
+```{r,  echo = FALSE, message= FALSE, warning = FALSE}
+#expos <- expos |>
+#  mutate(
+#    Visitors = str_remove_all(Visitors, ","),
+#    Visitors = na_if(Visitors, "N/A"),
+#    Visitors = na_if(Visitors, ""),
+#    Visitors = as.numeric(Visitors)
+#  ) 
+d <- ggplot(expos, aes(x = Year, y = Visitors, color = ExpoType)) +
+  geom_point(size = 2.5) +
+  labs(
+    title = "World's Fair Visitors Over Time",
+    x = "Year",
+    y = "Number of Visitors",
+    color = "Expo Type") +
+  scale_y_continuous(
+    n.breaks = 5,
+    labels = scales::comma) + 
+  scale_color_manual(values = c("World Expo" = "steelblue",
+                                "Horticultural Expo" = "forestgreen",
+                                "Specialized Expo" = "orange3")) +
+  theme(
+    plot.title = element_text(size = 14),
+    axis.title = element_text(size = 11),
+    axis.text = element_text(size = 10)) +
+  theme_bw()
+d
+```
+
+#### Interpretation:
+
+In this scatter plot we graphed year on the x axis and number of visitors by expo on the y. We then color coded them by the expo type to make identifying patterns and trends over time easier. World Expos generally attract a much larger audience in general than Specialized and Horticultural Expos with a few exceeding 60 million and the most having `r format(max(expos$Visitors[expos$ExpoType == "World Expo"], na.rm = TRUE), big.mark = ",", scientific = FALSE)`. Although it appears that for World Expos it seems to have generally increased over time, we also note a considerable amount of variation in the level of visitors. For Specialized and Horticultural Expos, we see that they generally attract less visitors on average, this suggests a possible correlation between Expo type and attendance levels, but we would need to examine this further.
+
+<br>
+
+### Fifth Graph -- Scatter Plots With Visitors Over Time by Expo Type.
+
+```{r, echo= FALSE, message = FALSE, warning = FALSE}
+expos1 <- expos |>
+  mutate(
+    Visitors = str_remove_all(Visitors, ","),
+    Visitors = as.numeric(Visitors)) |>
+  filter(ExpoType == "World Expo")
+
+ a <- ggplot(expos1, aes(x = Year, y = Visitors)) +
+  geom_point(size =2.5, color ="steelblue") +
+  labs(
+    x = "Year",
+    y = "Number of Visitors",
+    title = "World Expo Visitors Over Time") + 
+   scale_y_continuous(n.breaks = 5, labels = scales::comma) + 
+   theme(plot.title = element_text(size = 14),
+         axis.title = element_text(size = 11),
+         axis.text = element_text(size = 10)) +
+   theme_bw()
+```
+
+```{r, echo= FALSE , message = FALSE, warning = FALSE}
+expos2 <- expos |>
+  drop_na() |>
+  mutate(
+    Visitors = str_remove_all(Visitors, ","), 
+    Visitors = as.numeric(Visitors)) |>
+  filter(ExpoType == "Horticultural Expo") 
+
+ b <- ggplot(expos2, aes(x = Year, y = Visitors)) +
+  geom_point(size = 2.5, color ="forestgreen") +
+  labs(
+    x = "Year",
+    y = "Number of Visitors",
+    title = "Horticultural Expo Visitors Over Time") +
+   scale_y_continuous(n.breaks = 5, labels = scales::comma) + 
+   theme(plot.title = element_text(size = 14),
+         axis.title = element_text(size = 11),
+         axis.text = element_text(size = 10)) +
+   theme_bw()
+```
+
+```{r,echo = FALSE, message = FALSE, warning = FALSE}
+expos3 <- expos |>
+  drop_na() |>
+  mutate(
+    Visitors = str_remove_all(Visitors, ","), 
+    Visitors = as.numeric(Visitors)) |>
+  filter(ExpoType == "Specialized Expo") 
+
+c <- ggplot(expos3, aes(x = Year, y = Visitors)) +
+  geom_point( size = 2.5, color ="orange3") +
+  labs(
+    x = "Year",
+    y = "Number of Visitors",
+    title = "Specialized Expo Visitors Over Time") + 
+  scale_y_continuous(n.breaks = 5, labels = scales::comma) + 
+  theme(plot.title = element_text(size = 14), 
+        axis.title = element_text(size = 11),
+        axis.text = element_text(size = 10)) +
+  theme_bw()
+```
+
+```{r, warning = FALSE, echo = FALSE, fig.width=7, fig.height=11}
+a / b / c 
+```
+
+#### Interpretation:
+
+For these graphs, we separated the graph above into three separate scatter plots with each type of expo mapped to each one. By examining the patterns, we can see that World Expos now more clearly have generally increased in visitor attendance over time but with considerable variation. Horticultural's trend, which was a bit harder to see clearly on the combined graph is easier to see. It presents almost a neutral or stable pattern with one having over 20 million while the rest seem to remain between 2.5-10 million. For Specialized Expos, we see an increasing trend in attendance but there seems to be a fair amount of variation in it overall. Overall, these graphs suggest that attendance patterns differ between expo type and more analysis is needed to explain the differences we see.
+
+------------------------------------------------------------------------
+
+## **Conclusion**
+
+Throughout this task, we examined several variables and characteristics of World Fairs, including their starting and ending months, duration, visitor attendance, and exposition type. Through our initial analysis, we identified several interesting patterns and differences between the three types of expositions.
+
+World Expos and Horticultural Expos tend to follow fairly similar schedules, with most beginning during the spring or early summer and ending in the fall. Both generally last around 5–7 months, while Specialized Expos tend to have more variation in their duration.
+
+Another important finding was that visitor attendance appears to differ among exposition types, with World Expos generally attracting more visitors than Horticultural and Specialized Expos. There also appears to be a generally increasing trend in World Expo attendance over time, although considerable variation exists. Meanwhile, Horticultural Expos appear to have relatively stable attendance patterns, while Specialized Expos show less consistent trends.
+
+Overall, our initial findings suggest that exposition type is associated with differences in scheduling, duration, and visitor attendance. However, further analysis and statistical testing would be needed to better understand these relationships and determine what factors may explain them.
+
+### Limitations
+
+Although our initial analysis showed some interesting patterns, we must also acknowledge its limitations.
+
+First, our data set contained some missing values for visitor attendance, which may have influenced our summary statistics. Additionally, since our data was collected from Wikipedia, there may be inconsistencies in how the information was recorded or reported.
+
+We also did not examine other factors that could influence attendance, such as geographic location, population, economic conditions, or historical events. These are variables that we could investigate further in future tasks. For our exposition duration calculations we based them on differences between calendar months rather than exact dates. As a result, these durations are approximate and may not fully represent the actual length of each exposition. Finally, our analysis consisted primarily of descriptive statistics. Therefore, further statistical testing would be needed to better evaluate the patterns and relationships we observed and investigate additional factors that may help explain them.
