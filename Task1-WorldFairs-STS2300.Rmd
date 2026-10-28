@@ -7,7 +7,7 @@ author: "Austin Barnet, Alex Roberts"
 
 ## **Introduction**
 
-Our data examines the World Fair data found on [**this**](https://en.wikipedia.org/wiki/World%27s_fair#List_of_expositions) Wikipedia page. Data was taken from the Wikipedia page and compiled into a list of 98 different expositions including year, location, dates, area, the number of visitors, number of participants, the theme and the expo type, which was divided into three types: World, Specialized and Horticultural.
+Our data examines the World Fair data found on [**this**](https://en.wikipedia.org/wiki/World%27s_fair#List_of_expositions) Wikipedia page. Data was taken from the Wikipedia page and compiled into a list of 98 different expositions, including year, location, dates, area, the number of visitors, number of participants, the theme and the expo type, which was divided into three types: World, Specialized and Horticultural.
 
 World Fairs are events held every few years in various forms since the 1850's. The purpose of World Fairs is to create a unique, engaging, collaborative experience for people around the world to learn about other cultures, customs, traditions, history, art and advancements in technology. With World Fairs, there are three types, World Expo, Specialized Expo and Horticultural Expos. World Expos are the oldest, London held the first world exposition in 1851. World Expos are also the largest and most diverse, specialized expos focus on a specific theme, while horticultural expos are agriculturally focused. 
 
